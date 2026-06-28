@@ -133,6 +133,31 @@ paths:
                 type: object
                 properties: { ok: { type: boolean, example: true } }
 
+  /api/docs:
+    get:
+      tags: [System]
+      summary: Interactive API docs (Swagger UI)
+      description: Renders this spec as a Swagger UI page. Open in a browser.
+      security: []
+      responses:
+        '200':
+          description: HTML page.
+          content:
+            text/html:
+              schema: { type: string }
+
+  /api/openapi.yaml:
+    get:
+      tags: [System]
+      summary: This OpenAPI document
+      security: []
+      responses:
+        '200':
+          description: The raw OpenAPI spec.
+          content:
+            text/yaml:
+              schema: { type: string }
+
   /api/auth/sign-up/email:
     post:
       tags: [Auth]
