@@ -19,7 +19,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/client/components/ui/card";
-import { Loader2, LogOut, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, LogOut, Trash2 } from "lucide-react";
+import { Welcome } from "@/client/components/Welcome";
 
 function GoogleButton() {
   return (
@@ -33,7 +34,7 @@ function GoogleButton() {
   );
 }
 
-function AuthCard() {
+function AuthCard({ onBack }: { onBack?: () => void }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -75,7 +76,17 @@ function AuthCard() {
   }
 
   return (
-    <div className="min-h-svh flex items-center justify-center p-4">
+    <div className="min-h-svh flex flex-col items-center justify-center gap-3 p-4">
+      <div className="w-full max-w-sm">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="text-muted-foreground hover:text-foreground -ml-1 mb-3 inline-flex items-center gap-1 text-sm transition-colors"
+          >
+            <ArrowLeft className="size-4" /> Back
+          </button>
+        )}
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{mode === "signin" ? "Sign in" : "Create account"}</CardTitle>
@@ -297,6 +308,7 @@ function Notes() {
 export default function App() {
   const isResetRoute = window.location.pathname === "/reset-password";
   const { data: session, isPending } = useSession();
+  const [showAuth, setShowAuth] = useState(false);
 
   if (isResetRoute) return <ResetPassword />;
 
@@ -308,7 +320,13 @@ export default function App() {
     );
   }
 
-  if (!session) return <AuthCard />;
+  if (!session) {
+    return showAuth ? (
+      <AuthCard onBack={() => setShowAuth(false)} />
+    ) : (
+      <Welcome onGetStarted={() => setShowAuth(true)} />
+    );
+  }
 
   return (
     <div className="mx-auto max-w-xl p-4 sm:p-8">
