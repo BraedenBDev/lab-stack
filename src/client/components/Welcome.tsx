@@ -1,7 +1,7 @@
 import { ArrowUpRight, BookText, Boxes, SquareTerminal } from "lucide-react";
 import type { ReactNode } from "react";
 
-const REPO = "https://github.com/BraedenBDev/bun-stack";
+const REPO = "https://github.com/BraedenBDev/lab-stack";
 
 const STACK = ["Bun", "Hono", "Drizzle", "Better Auth", "React 19", "Vite", "Tailwind v4"];
 
@@ -85,8 +85,8 @@ export function Welcome({ onGetStarted }: { onGetStarted: () => void }) {
         {/* top bar */}
         <In delay={0} className="flex items-center justify-between">
           <div className="flex items-center gap-2 font-mono text-sm font-medium tracking-tight">
-            <span className="grid size-6 place-items-center rounded-md bg-neutral-900 text-[13px] text-white">b</span>
-            bun-stack
+            <span className="grid size-6 place-items-center rounded-md bg-neutral-900 text-[13px] text-white">l</span>
+            lab-stack
           </div>
           <nav className="flex items-center gap-1 font-mono text-[13px]">
             <a href="/api/docs" className="rounded-md px-3 py-1.5 text-neutral-500 transition-colors hover:bg-neutral-900/5 hover:text-neutral-900">Docs</a>
@@ -106,7 +106,7 @@ export function Welcome({ onGetStarted }: { onGetStarted: () => void }) {
 
           <In delay={150}>
             <h1 className="mt-6 flex items-baseline gap-3 text-6xl font-semibold tracking-[-0.04em] sm:text-7xl">
-              bun-stack
+              lab-stack
               <span className="font-mono text-base font-normal tracking-normal text-neutral-400">v0.1.0</span>
             </h1>
           </In>

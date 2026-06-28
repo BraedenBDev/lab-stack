@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`bun-stack` is the boilerplate "fingerprint" for **Almost a Lab**'s web-app SaaS prototypes — clone it, rename it, build the product. The whole stack is open-source TypeScript and deploys as **one container**: a single Bun/Hono process serves both the JSON API and the built React SPA.
+`lab-stack` is the boilerplate "fingerprint" for **Almost a Lab**'s web-app SaaS prototypes — clone it, rename it, build the product. The whole stack is open-source TypeScript and deploys as **one container**: a single Bun/Hono process serves both the JSON API and the built React SPA.
 
 Stack: **Bun** (runtime + package manager) · **Hono** (server + typed RPC) · **PostgreSQL** via Bun's native `Bun.SQL` driver (no `pg` dep) · **Drizzle** (ORM/migrations) · **Better Auth** (email+password, Google OAuth, verification, reset) · **Nodemailer/SMTP** (Resend by default) · **Zod** (shared validation) · **React 19 + Tailwind v4 + shadcn/ui** · **Vite**.
 

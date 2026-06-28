@@ -1,4 +1,4 @@
-# bun-stack
+# lab-stack
 
 **The Almost a Lab fingerprint** — the boilerplate we fork for every web-app SaaS
 prototype. A drop-on-a-server starter for the full open-source TypeScript stack,

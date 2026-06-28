@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: bun-stack API
+  title: lab-stack API
   version: 0.1.0
   description: |
-    HTTP API for **bun-stack** — the Almost a Lab SaaS-prototype boilerplate
+    HTTP API for **lab-stack** — the Almost a Lab SaaS-prototype boilerplate
     (Bun + Hono + Drizzle + Better Auth + Postgres).
 
     ## Authentication

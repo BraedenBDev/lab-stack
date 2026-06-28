@@ -1,6 +1,6 @@
 # Implementation guide
 
-How `bun-stack` actually works, end to end — for the engineer who's about to
+How `lab-stack` actually works, end to end — for the engineer who's about to
 fork it into a new Almost a Lab prototype and wants to know where everything
 lives, why it's wired this way, and how to extend it without fighting the grain.
 
