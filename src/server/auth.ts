@@ -3,36 +3,19 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "./db";
 import * as schema from "./db/schema";
 import { sendEmail, emailLayout } from "./lib/email";
+import { env, trustedOrigins } from "./env";
 
-const trustedOrigins = (process.env.TRUSTED_ORIGINS ?? "http://localhost:5173")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-const googleId = process.env.GOOGLE_CLIENT_ID;
-const googleSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleId = env.GOOGLE_CLIENT_ID;
+const googleSecret = env.GOOGLE_CLIENT_SECRET;
 
 // Verification is on by default. Locally, with no SMTP configured, the email
 // module logs the link to the console so you can still complete the flow.
-const requireEmailVerification =
-  (process.env.REQUIRE_EMAIL_VERIFICATION ?? "true") === "true";
-
-// Fail closed in production: Better Auth otherwise boots with a short, missing,
-// or template-placeholder secret, which lets anyone forge session cookies (the
-// placeholder is public in this repo). In dev it falls back to a known secret.
-const secret = process.env.BETTER_AUTH_SECRET;
-if (process.env.NODE_ENV === "production") {
-  if (!secret || secret.length < 32 || secret.includes("replace-me")) {
-    throw new Error(
-      "BETTER_AUTH_SECRET must be a unique random string of 32+ chars in production. " +
-        "Generate one with: openssl rand -base64 32"
-    );
-  }
-}
+const requireEmailVerification = env.REQUIRE_EMAIL_VERIFICATION === "true";
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
-  secret,
+  baseURL: env.BETTER_AUTH_URL,
+  // The production secret guard lives in ./env (fails closed at boot).
+  secret: env.BETTER_AUTH_SECRET,
   trustedOrigins,
   database: drizzleAdapter(db, {
     provider: "pg",

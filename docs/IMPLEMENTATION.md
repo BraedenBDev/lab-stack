@@ -230,10 +230,25 @@ a non-root container.
 
 ---
 
-## 9. Testing
+## 9. Observability & config
 
-There's no test framework wired in — `bun run typecheck` is the standing
-correctness gate. Bun ships a native test runner, so add tests with zero deps:
+- **Config** is validated once at boot in `src/server/env.ts` (zod over
+  `process.env`) — a bad deploy fails fast with one aggregated message rather
+  than a runtime 500 later. Read `env` / `isProduction` / `trustedOrigins` from
+  there on the server; don't reach into `process.env`.
+- **Errors** funnel through one seam: the server's `app.onError` (reports +
+  generic 500, no stack leak) and `app.notFound` (JSON), `hono/logger` for
+  request logs, and a client `<ErrorBoundary>`. All error paths call
+  `reportError()` in `src/shared/report.ts` — wire Sentry or self-hosted
+  GlitchTip there once and every site reports. No CSP is set by default (so Vite
+  + the CDN Swagger UI work); add one when locking a product down.
+
+## 10. Testing & CI
+
+CI (`.github/workflows/ci.yml`) runs `bun install` + `typecheck` + `build` on
+every push to `main` and on PRs — green without any secrets. There's no unit
+test framework wired in; `bun run typecheck` is the standing correctness gate.
+Bun ships a native test runner, so add tests with zero deps:
 
 ```ts
 // src/server/routes/notes.test.ts

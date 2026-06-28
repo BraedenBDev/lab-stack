@@ -26,7 +26,7 @@ bun run db:studio           # Drizzle Studio
 bun run auth:generate       # regenerate auth tables after adding a Better Auth plugin
 ```
 
-There is **no test runner and no linter** configured. `bun run typecheck` is the correctness gate — run it after any change. If you add tests, `bun test` is the native runner (no extra deps).
+There is **no unit-test runner and no linter** configured. `bun run typecheck` is the correctness gate — run it after any change. CI (`.github/workflows/ci.yml`) runs `typecheck` + `build` on every push to `main` and PR. If you add tests, `bun test` is the native runner (no extra deps).
 
 Local DB for dev: `docker run -d --name pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=app -p 5432:5432 postgres:17-alpine`, then `bun run db:push`. Or `docker compose up --build` for the full app+DB on `:3000`. Both need `.env` (copy `.env.example`, set `BETTER_AUTH_SECRET` to ≥32 random chars).
 
@@ -45,6 +45,10 @@ Local DB for dev: `docker run -d --name pg -e POSTGRES_PASSWORD=postgres -e POST
 **DB schema = Better Auth tables + your tables, in one file.** `src/server/db/schema.ts` holds the four Better-Auth tables (`user`, `session`, `account`, `verification`) plus app tables (`notes`). The auth-table field names must stay camelCase (the adapter maps them); column-name strings can differ. After adding a Better Auth plugin, run `bun run auth:generate` (rewrites `src/server/db/auth-schema.ts`) then `db:generate && db:migrate`.
 
 **Email degrades gracefully.** `src/server/lib/email.ts` returns a null transporter when `SMTP_PASS` is unset and **logs the verification/reset link to the server console** instead of sending — so the full auth flow is testable in local dev with no provider.
+
+**Config is centralized and validated.** `src/server/env.ts` zod-parses `process.env` at boot, fails fast with one aggregated message on misconfig, and exports a typed `env`, `isProduction`, and `trustedOrigins`. **Read config from `env` on the server, not `process.env`.** It also owns the production guard that rejects a missing/short/placeholder `BETTER_AUTH_SECRET`. (`drizzle.config.ts` is the exception — it's a separate CLI process and reads `process.env` directly.)
+
+**Errors funnel through one seam.** Server: `app.onError` reports + returns a generic 500 (no stack leak); `app.notFound` returns JSON for unmatched routes; `hono/logger` logs requests. Client: `<ErrorBoundary>` wraps `<App>` in `main.tsx`. Both call `reportError()` in `src/shared/report.ts` — wire Sentry/GlitchTip there once and every call site reports.
 
 **Prod vs dev origin model.** Dev = two origins (Vite :5173 proxies `/api` → Hono :3000) so CORS + same-origin cookies matter. Prod = one origin (Hono serves `/api` and `./dist`), so `BETTER_AUTH_URL` and `TRUSTED_ORIGINS` are typically the same public URL. Static serving in `index.ts` is gated on `isProd`.
 

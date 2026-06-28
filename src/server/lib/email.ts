@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { env } from "../env";
 
 /**
  * Generic SMTP sender. Defaults to Resend's SMTP endpoint, but because it's
@@ -10,11 +11,11 @@ import nodemailer, { type Transporter } from "nodemailer";
  * If SMTP_PASS is not set (e.g. local dev), emails are logged to the console
  * instead of sent, so verification/reset links are still clickable.
  */
-const from = process.env.EMAIL_FROM ?? "onboarding@resend.dev";
-const host = process.env.SMTP_HOST ?? "smtp.resend.com";
-const port = Number(process.env.SMTP_PORT ?? 465);
-const user = process.env.SMTP_USER ?? "resend";
-const pass = process.env.SMTP_PASS;
+const from = env.EMAIL_FROM;
+const host = env.SMTP_HOST;
+const port = env.SMTP_PORT;
+const user = env.SMTP_USER;
+const pass = env.SMTP_PASS;
 
 let transporter: Transporter | null = null;
 

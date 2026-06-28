@@ -1,16 +1,14 @@
+// `./env` first: validates config and fails fast at boot before anything else
+// (auth, db) tries to use it.
+import { env, isProduction, trustedOrigins } from "./env";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
+import { logger } from "hono/logger";
 import { serveStatic } from "hono/bun";
 import { auth } from "./auth";
 import { notesRoute } from "./routes/notes";
-
-const isProd = process.env.NODE_ENV === "production";
-
-const trustedOrigins = (process.env.TRUSTED_ORIGINS ?? "http://localhost:5173")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+import { reportError } from "../shared/report";
 
 /**
  * Order matters:
@@ -25,6 +23,8 @@ const app = new Hono()
   // nosniff, Referrer-Policy, HSTS in prod, ...). No CSP by default so it won't
   // break the Vite bundle; add one via `contentSecurityPolicy` when you lock down.
   .use("*", secureHeaders())
+  // Request logging (method, path, status, timing) → stdout / container logs.
+  .use("*", logger())
   .use(
     "/api/*",
     cors({
@@ -61,17 +61,26 @@ const app = new Hono()
 /** Export the route type so the frontend gets a fully typed RPC client. */
 export type AppType = typeof app;
 
+// Central error handler: report once, never leak a stack trace to the client.
+app.onError((err, c) => {
+  reportError(err, { path: c.req.path, method: c.req.method });
+  return c.json({ error: "Internal Server Error" }, 500);
+});
+
+// JSON 404 for unmatched API routes (in prod the SPA fallback below handles
+// non-API GETs).
+app.notFound((c) => c.json({ error: "Not Found" }, 404));
+
 // In production the same server serves the built SPA. In dev, Vite does that
 // on :5173 and proxies /api here, so we skip static handling.
-if (isProd) {
+if (isProduction) {
   app.use("/*", serveStatic({ root: "./dist" }));
   app.get("*", serveStatic({ path: "./dist/index.html" }));
 }
 
-const port = Number(process.env.PORT ?? 3000);
-console.log(`server listening on http://localhost:${port} (prod=${isProd})`);
+console.log(`server listening on http://localhost:${env.PORT} (prod=${isProduction})`);
 
 export default {
-  port,
+  port: env.PORT,
   fetch: app.fetch,
 };

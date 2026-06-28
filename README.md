@@ -177,9 +177,16 @@ per-user), and the Better Auth `/api/auth/*` surface.
 
 Enforced out of the box: per-user ownership scoping (no IDOR), parameterized
 queries, allowlisted credentialed CORS, `HttpOnly`+`SameSite=Lax` session
-cookies, default security headers, a production boot-guard on
-`BETTER_AUTH_SECRET` (refuses to start with a missing/short/placeholder secret),
-HTML-escaped emails, and a non-root container.
+cookies, default security headers, validated-at-boot config
+(`src/server/env.ts`) with a production guard on `BETTER_AUTH_SECRET` (refuses to
+start with a missing/short/placeholder secret), HTML-escaped emails, and a
+non-root container.
+
+**Observability:** request logging (`hono/logger`), a central `app.onError`
+(reports + generic 500, no stack leak), JSON 404s, and a client
+`<ErrorBoundary>` — all routed through `reportError()` in `src/shared/report.ts`,
+the one place to wire Sentry or self-hosted GlitchTip. CI
+(`.github/workflows/ci.yml`) runs typecheck + build on every push and PR.
 
 Tune these per product (details in [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md#8-security-posture)):
 
