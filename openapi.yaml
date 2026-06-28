@@ -1,0 +1,345 @@
+openapi: 3.0.3
+info:
+  title: bun-stack API
+  version: 0.1.0
+  description: |
+    HTTP API for **bun-stack** — the Almost a Lab SaaS-prototype boilerplate
+    (Bun + Hono + Drizzle + Better Auth + Postgres).
+
+    ## Authentication
+    Auth is **cookie-based**. Sign up or sign in via the `/api/auth/*` endpoints;
+    Better Auth sets an `HttpOnly` `better-auth.session_token` cookie that the
+    browser sends automatically on subsequent requests. Application routes under
+    `/api/notes` require that cookie and 401 without it. Every note is scoped to
+    the session user — you can only see and mutate your own.
+
+    `/api/auth/*` is a catch-all handled by Better Auth; the operations documented
+    here are the common ones. The full surface (email verification, password
+    reset, OAuth callbacks, account linking, …) follows Better Auth conventions —
+    see https://www.better-auth.com/docs.
+servers:
+  - url: http://localhost:5173
+    description: Local dev (Vite proxies /api → Hono on :3000)
+  - url: http://localhost:3000
+    description: Local Hono server / production single-origin
+tags:
+  - name: System
+  - name: Auth
+  - name: Notes
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: HttpOnly session cookie issued by Better Auth on sign-in/sign-up.
+  schemas:
+    Note:
+      type: object
+      required: [id, title, body, userId, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid, example: 3a7177fc-89b7-48b6-835a-8df887d85fcb }
+        title: { type: string, example: Buy milk }
+        body: { type: string, example: "2% organic" }
+        userId: { type: string, example: 3ESUU925kxOFNrXHp7CloMuOEBA2a1x0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateNote:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200, example: Buy milk }
+        body: { type: string, maxLength: 10000, default: "", example: "2% organic" }
+    UpdateNote:
+      description: All fields optional; omitted fields are left unchanged.
+      type: object
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, maxLength: 10000 }
+    SignUp:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, example: Alice }
+        email: { type: string, format: email, example: alice@example.com }
+        password: { type: string, minLength: 8, example: password1234 }
+    SignIn:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: alice@example.com }
+        password: { type: string, example: password1234 }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        emailVerified: { type: boolean }
+        image: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AuthResult:
+      type: object
+      properties:
+        token: { type: string, nullable: true }
+        user: { $ref: '#/components/schemas/User' }
+    Session:
+      type: object
+      nullable: true
+      properties:
+        session:
+          type: object
+          properties:
+            id: { type: string }
+            userId: { type: string }
+            expiresAt: { type: string, format: date-time }
+        user: { $ref: '#/components/schemas/User' }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      example: { error: Unauthorized }
+    ValidationError:
+      type: object
+      description: Zod validation failure (shape from @hono/zod-validator).
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            issues:
+              type: array
+              items:
+                type: object
+                properties:
+                  path: { type: array, items: { type: string } }
+                  message: { type: string, example: Title is required }
+
+paths:
+  /api/health:
+    get:
+      tags: [System]
+      summary: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Server is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { ok: { type: boolean, example: true } }
+
+  /api/auth/sign-up/email:
+    post:
+      tags: [Auth]
+      summary: Register with email + password
+      description: >
+        Creates a user and (when email verification is required) sends a
+        verification email. Sets the session cookie on success.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignUp' }
+      responses:
+        '200':
+          description: "Account created; `Set-Cookie: better-auth.session_token` returned."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '422':
+          description: Email already in use or invalid input.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/auth/sign-in/email:
+    post:
+      tags: [Auth]
+      summary: Sign in with email + password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignIn' }
+      responses:
+        '200':
+          description: Signed in; session cookie set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Email not verified (when REQUIRE_EMAIL_VERIFICATION=true).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/auth/sign-out:
+    post:
+      tags: [Auth]
+      summary: Sign out (clears the session cookie)
+      responses:
+        '200':
+          description: Signed out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { success: { type: boolean, example: true } }
+
+  /api/auth/get-session:
+    get:
+      tags: [Auth]
+      summary: Current session
+      responses:
+        '200':
+          description: The active session and user, or `null` if unauthenticated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+
+  /api/auth/sign-in/social:
+    post:
+      tags: [Auth]
+      summary: Start an OAuth sign-in (e.g. Google)
+      description: >
+        Returns a provider authorization URL to redirect the user to. Only
+        enabled when the provider's credentials are configured (Google requires
+        GOOGLE_CLIENT_ID/SECRET). The callback returns to
+        `/api/auth/callback/{provider}`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider: { type: string, example: google }
+                callbackURL: { type: string, example: "/" }
+      responses:
+        '200':
+          description: Authorization URL to redirect to.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  redirect: { type: boolean }
+
+  /api/notes:
+    get:
+      tags: [Notes]
+      summary: List the current user's notes
+      description: Newest first. Scoped to the authenticated user.
+      responses:
+        '200':
+          description: Array of notes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Note' }
+        '401':
+          description: Not authenticated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      tags: [Notes]
+      summary: Create a note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateNote' }
+      responses:
+        '201':
+          description: Created note.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Note' }
+        '400':
+          description: Validation failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidationError' }
+        '401':
+          description: Not authenticated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/notes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Notes]
+      summary: Update a note (partial)
+      description: Only the fields you send are changed. Returns 404 if the note isn't yours.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateNote' }
+      responses:
+        '200':
+          description: Updated note.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Note' }
+        '400':
+          description: Validation failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidationError' }
+        '401':
+          description: Not authenticated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Note not found or not owned by the caller.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Notes]
+      summary: Delete a note
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { ok: { type: boolean, example: true } }
+        '401':
+          description: Not authenticated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Note not found or not owned by the caller.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+security:
+  - sessionCookie: []
